@@ -475,75 +475,95 @@ function removeLoadingIndicator() {
   }
 }
 
-// Call OpenAI API
+// Update the callOpenAI function to support multiple providers
 async function callOpenAI(prompt) {
-  if (!apiKey) {
-    addMessage('assistant', 'Error: Please add your OpenAI API key in the extension settings.');
+  // Get current settings
+  const settings = await new Promise(resolve => {
+    chrome.storage.sync.get([
+      'activeProvider',
+      'openaiKey',
+      'anthropicKey',
+      'ollamaUrl',
+      'lmstudioUrl',
+      'selectedModel'
+    ], resolve);
+  });
+
+  if (!settings.activeProvider || !settings.selectedModel) {
+    addMessage('assistant', 'Error: Please configure AI provider settings.');
     return;
   }
-  
+
   showLoadingIndicator();
-  
+
   try {
-    // Include system message to guide the AI with enhanced n8n-specific instructions
+    let response;
     const messages = [
       {
         role: 'system',
-        content: `You are n8n Co Pilot, an AI assistant specializing in n8n workflow automation.
-Your goal is to help users build effective n8n workflows by providing guidance and generating workflow components.
-
-When a user asks for a specific workflow or node, respond with both:
-1. A natural language explanation of the solution
-2. A JSON code block that can be directly added to their n8n workflow
-
-For JSON workflow snippets, use the following format:
-\`\`\`json
-{
-  "nodes": [
-    {
-      "name": "Node Name",
-      "type": "n8n-nodes-base.nodeType",
-      "parameters": { ... },
-      "position": [x, y]
-    }
-  ],
-  "connections": { ... }
-}
-\`\`\`
-
-Ensure the JSON is valid and follows n8n's schema. Only include nodes and connections that are explicitly requested.`
+        content: `You are n8n Co Pilot, an AI assistant specializing in n8n workflow automation.`
       },
       ...chatMemory
     ];
-    
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 1000
-      })
-    });
-    
+
+    switch (settings.activeProvider) {
+      case 'openai':
+        if (!settings.openaiKey) throw new Error('OpenAI API key not configured');
+        response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${settings.openaiKey}`
+          },
+          body: JSON.stringify({
+            model: settings.selectedModel,
+            messages,
+            temperature: 0.7
+          })
+        });
+        break;
+
+      case 'ollama':
+        response = await fetch(`${settings.ollamaUrl}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: settings.selectedModel,
+            messages,
+            temperature: 0.7
+          })
+        });
+        break;
+
+      case 'lmstudio':
+        response = await fetch(`${settings.lmstudioUrl}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: settings.selectedModel,
+            messages,
+            temperature: 0.7
+          })
+        });
+        break;
+
+      default:
+        throw new Error('Unsupported provider');
+    }
+
     const data = await response.json();
     removeLoadingIndicator();
-    
+
     if (data.error) {
-      console.error('OpenAI API error:', data.error);
+      console.error('API error:', data.error);
       addMessage('assistant', `Error: ${data.error.message}`);
       return;
     }
-    
+
     if (data.choices && data.choices[0] && data.choices[0].message) {
       const aiResponse = data.choices[0].message.content;
       addMessage('assistant', aiResponse);
       
-      // Extract and process JSON if present
       const extractedJson = extractJsonFromResponse(aiResponse);
       if (extractedJson) {
         processWorkflowJson(extractedJson);
@@ -552,9 +572,9 @@ Ensure the JSON is valid and follows n8n's schema. Only include nodes and connec
       addMessage('assistant', 'I encountered an issue processing your request. Please try again.');
     }
   } catch (error) {
-    console.error('Error calling OpenAI:', error);
+    console.error('Error calling AI provider:', error);
     removeLoadingIndicator();
-    addMessage('assistant', `Error: ${error.message || 'Failed to connect to OpenAI API'}`);
+    addMessage('assistant', `Error: ${error.message}`);
   }
 }
 
