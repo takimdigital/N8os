@@ -1,21 +1,179 @@
 // settings/settings.js
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Existing elements
   const statusIndicator = document.getElementById('status-indicator');
   const statusText = document.getElementById('status-text');
   const showChatButton = document.getElementById('show-chat');
   const settingsButton = document.getElementById('settings-btn');
   const settingsPanel = document.getElementById('settings-panel');
   const saveSettingsButton = document.getElementById('save-settings');
-  const toggleContainer = document.querySelector('.toggle-container');
-  const toggleOptions = document.querySelectorAll('.toggle-option');
+  
+  // New elements for providers
+  const providerSelect = document.getElementById('provider-select');
+  const modelSelect = document.getElementById('model-select');
   const openaiSection = document.getElementById('openai-section');
   const anthropicSection = document.getElementById('anthropic-section');
+  const ollamaSection = document.getElementById('ollama-section');
+  const lmstudioSection = document.getElementById('lmstudio-section');
+  
+  // Input elements
   const openaiKeyInput = document.getElementById('openai-key');
   const anthropicKeyInput = document.getElementById('anthropic-key');
+  const ollamaUrlInput = document.getElementById('ollama-url');
+  const lmstudioUrlInput = document.getElementById('lmstudio-url');
   const n8nApiUrlInput = document.getElementById('n8n-api-url');
   const n8nApiKeyInput = document.getElementById('n8n-api-key');
-  
+
+  // Function to fetch available models
+  async function fetchModels(provider) {
+    modelSelect.disabled = true;
+    modelSelect.innerHTML = '<option value="">Loading models...</option>';
+
+    try {
+      let models = [];
+      switch (provider) {
+        case 'ollama':
+          const ollamaUrl = ollamaUrlInput.value.trim();
+          const ollamaResponse = await fetch(`${ollamaUrl}/api/tags`);
+          const ollamaData = await ollamaResponse.json();
+          models = ollamaData.models || [];
+          break;
+
+        case 'lmstudio':
+          const lmstudioUrl = lmstudioUrlInput.value.trim();
+          const lmstudioResponse = await fetch(`${lmstudioUrl}/v1/models`);
+          const lmstudioData = await lmstudioResponse.json();
+          models = lmstudioData.data || [];
+          break;
+
+        case 'openai':
+          models = [
+            { id: 'gpt-4', name: 'GPT-4' },
+            { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' }
+          ];
+          break;
+
+        case 'anthropic':
+          models = [
+            { id: 'claude-3-opus', name: 'Claude 3 Opus' },
+            { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet' }
+          ];
+          break;
+      }
+
+      modelSelect.innerHTML = models.map(model => 
+        `<option value="${model.id || model}">${model.name || model}</option>`
+      ).join('');
+      
+      modelSelect.disabled = false;
+    } catch (error) {
+      console.error('Error fetching models:', error);
+      modelSelect.innerHTML = '<option value="">Error loading models</option>';
+    }
+  }
+
+  // Handle provider change
+  providerSelect.addEventListener('change', () => {
+    const provider = providerSelect.value;
+    
+    // Hide all sections
+    [openaiSection, anthropicSection, ollamaSection, lmstudioSection].forEach(
+      section => section.classList.add('hidden')
+    );
+    
+    // Show selected provider section
+    switch (provider) {
+      case 'openai':
+        openaiSection.classList.remove('hidden');
+        break;
+      case 'anthropic':
+        anthropicSection.classList.remove('hidden');
+        break;
+      case 'ollama':
+        ollamaSection.classList.remove('hidden');
+        break;
+      case 'lmstudio':
+        lmstudioSection.classList.remove('hidden');
+        break;
+    }
+    
+    // Fetch models for the selected provider
+    fetchModels(provider);
+  });
+
+  // Load saved settings
+  chrome.storage.sync.get([
+    'openaiKey',
+    'anthropicKey',
+    'activeProvider',
+    'n8nApiUrl',
+    'n8nApiKey',
+    'ollamaUrl',
+    'lmstudioUrl',
+    'selectedModel'
+  ], (result) => {
+    if (result.openaiKey) openaiKeyInput.value = result.openaiKey;
+    if (result.anthropicKey) anthropicKeyInput.value = result.anthropicKey;
+    if (result.n8nApiUrl) n8nApiUrlInput.value = result.n8nApiUrl;
+    if (result.n8nApiKey) n8nApiKeyInput.value = result.n8nApiKey;
+    if (result.ollamaUrl) ollamaUrlInput.value = result.ollamaUrl;
+    if (result.lmstudioUrl) lmstudioUrlInput.value = result.lmstudioUrl;
+    
+    if (result.activeProvider) {
+      providerSelect.value = result.activeProvider;
+      providerSelect.dispatchEvent(new Event('change'));
+    }
+    
+    if (result.selectedModel) {
+      setTimeout(() => {
+        modelSelect.value = result.selectedModel;
+      }, 500);
+    }
+  });
+
+  // Save settings
+  saveSettingsButton.addEventListener('click', async () => {
+    const settings = {
+      openaiKey: openaiKeyInput.value.trim(),
+      anthropicKey: anthropicKeyInput.value.trim(),
+      activeProvider: providerSelect.value,
+      n8nApiUrl: n8nApiUrlInput.value.trim(),
+      n8nApiKey: n8nApiKeyInput.value.trim(),
+      ollamaUrl: ollamaUrlInput.value.trim(),
+      lmstudioUrl: lmstudioUrlInput.value.trim(),
+      selectedModel: modelSelect.value
+    };
+
+    chrome.storage.sync.set(settings, () => {
+      saveSettingsButton.textContent = 'Saved!';
+      
+      // Send message to content script about updated settings
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.tabs.sendMessage(tabs[0].id, { 
+          action: 'settingsUpdated',
+          settings
+        });
+      });
+      
+      setTimeout(() => {
+        saveSettingsButton.textContent = 'Save Settings';
+      }, 2000);
+    });
+  });
+
+  // Existing event listeners remain unchanged
+  showChatButton.addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'showChat' });
+      window.close();
+    });
+  });
+
+  settingsButton.addEventListener('click', () => {
+    settingsPanel.classList.toggle('hidden');
+  });
+
   // Centralized n8n page detection
   function isN8nPage(url) {
     return url.includes('n8n') || 
@@ -43,75 +201,11 @@ document.addEventListener('DOMContentLoaded', () => {
         statusIndicator.classList.add('inactive');
         statusIndicator.classList.remove('active');
         statusText.textContent = 'Not an n8n page';
-        showChatButton.disabled = true; // Disable button on non-n8n pages
+        showChatButton.disabled = true;
       }
     });
   });
-  
-  // Load saved settings
-  chrome.storage.sync.get([
-    'openaiKey', 
-    'anthropicKey', 
-    'activeProvider',
-    'n8nApiUrl',
-    'n8nApiKey'
-  ], (result) => {
-    if (result.openaiKey) {
-      openaiKeyInput.value = result.openaiKey;
-    }
-    
-    if (result.anthropicKey) {
-      anthropicKeyInput.value = result.anthropicKey;
-    }
-    
-    if (result.n8nApiUrl) {
-      n8nApiUrlInput.value = result.n8nApiUrl;
-    }
-    
-    if (result.n8nApiKey) {
-      n8nApiKeyInput.value = result.n8nApiKey;
-    }
-    
-    // Set active provider
-    if (result.activeProvider) {
-      toggleContainer.setAttribute('data-selected', result.activeProvider);
-      updateApiSections(result.activeProvider);
-    }
-  });
-  
-  // Show chat button click handler
-  showChatButton.addEventListener('click', () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'showChat' });
-      window.close(); // Close the popup after clicking
-    });
-  });
-  
-  // Toggle settings panel
-  settingsButton.addEventListener('click', () => {
-    settingsPanel.classList.toggle('hidden');
-  });
-  
-  // Handle provider toggle selection
-  toggleOptions.forEach(option => {
-    option.addEventListener('click', () => {
-      const provider = option.getAttribute('data-value');
-      toggleContainer.setAttribute('data-selected', provider);
-      updateApiSections(provider);
-    });
-  });
-  
-  // Function to update API sections based on selected provider
-  function updateApiSections(provider) {
-    if (provider === 'openai') {
-      openaiSection.classList.remove('hidden');
-      anthropicSection.classList.add('hidden');
-    } else {
-      openaiSection.classList.add('hidden');
-      anthropicSection.classList.remove('hidden');
-    }
-  }
-  
+
   // Validate n8n API URL
   function validateN8nApiUrl(url) {
     if (!url) return false;
@@ -139,64 +233,4 @@ document.addEventListener('DOMContentLoaded', () => {
       return false;
     }
   }
-  
-  // Save settings
-  saveSettingsButton.addEventListener('click', async () => {
-    const openaiKey = openaiKeyInput.value.trim();
-    const anthropicKey = anthropicKeyInput.value.trim();
-    const activeProvider = toggleContainer.getAttribute('data-selected');
-    const n8nApiUrl = n8nApiUrlInput.value.trim();
-    const n8nApiKey = n8nApiKeyInput.value.trim();
-    
-    // Validate n8n API URL if provided
-    let n8nApiValid = true;
-    if (n8nApiUrl && n8nApiKey) {
-      if (!validateN8nApiUrl(n8nApiUrl)) {
-        alert('Please enter a valid n8n API URL (e.g., https://your-n8n-instance.com)');
-        n8nApiValid = false;
-      }
-    }
-    
-    if (!n8nApiValid) return;
-    
-    // Save settings
-    chrome.storage.sync.set({ 
-      openaiKey, 
-      anthropicKey, 
-      activeProvider,
-      n8nApiUrl,
-      n8nApiKey
-    }, () => {
-      // Show save confirmation
-      saveSettingsButton.textContent = 'Saved!';
-      
-      // Send message to content script about updated settings
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        chrome.tabs.sendMessage(tabs[0].id, { 
-          action: 'settingsUpdated',
-          settings: {
-            openaiKey,
-            anthropicKey,
-            activeProvider,
-            n8nApiUrl,
-            n8nApiKey
-          }
-        });
-      });
-      
-      // Test n8n API connection if provided
-      if (n8nApiUrl && n8nApiKey) {
-        testN8nApiConnection(n8nApiUrl, n8nApiKey)
-          .then(isConnected => {
-            if (isConnected) {
-              statusText.textContent += ' (n8n API connected)';
-            }
-          });
-      }
-      
-      setTimeout(() => {
-        saveSettingsButton.textContent = 'Save Settings';
-      }, 2000);
-    });
-  });
 });
