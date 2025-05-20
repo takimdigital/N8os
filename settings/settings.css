@@ -319,3 +319,37 @@ input:focus {
   .api-status-dot.disconnected {
     background-color: #F44336;
   }
+
+/* Add new styles for provider selection */
+.provider-select {
+  margin-bottom: 20px;
+}
+
+.provider-select select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  color: white;
+  font-size: 14px;
+}
+
+#model-select-container {
+  margin-bottom: 20px;
+}
+
+#model-select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  color: white;
+  font-size: 14px;
+}
+
+#model-select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

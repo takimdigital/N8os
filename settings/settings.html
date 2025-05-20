@@ -24,14 +24,24 @@
     <div id="settings-panel" class="settings-panel hidden">
       <h2>AI Provider</h2>
       
-      <div class="toggle-container" data-selected="openai">
-        <div class="toggle-slider"></div>
-        <div class="toggle-option" data-value="openai">OpenAI</div>
-        <div class="toggle-option" data-value="anthropic">Anthropic</div>
+      <div class="provider-select">
+        <label for="provider-select">Select Provider:</label>
+        <select id="provider-select">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="ollama">Ollama</option>
+          <option value="lmstudio">LM Studio</option>
+        </select>
+      </div>
+
+      <div id="model-select-container" class="setting">
+        <label for="model-select">Model:</label>
+        <select id="model-select" disabled>
+          <option value="">Loading models...</option>
+        </select>
       </div>
       
       <div id="openai-section" class="api-section">
-        <div class="model-badge active">GPT-4.1</div>
         <div class="setting">
           <label for="openai-key">OpenAI API Key:</label>
           <input type="password" id="openai-key" placeholder="sk-..." autocomplete="off">
@@ -39,10 +49,23 @@
       </div>
       
       <div id="anthropic-section" class="api-section hidden">
-        <div class="model-badge active">Claude 3.7</div>
         <div class="setting">
           <label for="anthropic-key">Anthropic API Key:</label>
           <input type="password" id="anthropic-key" placeholder="sk-ant-..." autocomplete="off">
+        </div>
+      </div>
+
+      <div id="ollama-section" class="api-section hidden">
+        <div class="setting">
+          <label for="ollama-url">Ollama URL:</label>
+          <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434">
+        </div>
+      </div>
+
+      <div id="lmstudio-section" class="api-section hidden">
+        <div class="setting">
+          <label for="lmstudio-url">LM Studio URL:</label>
+          <input type="text" id="lmstudio-url" value="http://localhost:1234" placeholder="http://localhost:1234">
         </div>
       </div>
       
