@@ -6,6 +6,7 @@ let isN8nPage = true;
 // Chat memory to maintain conversation context
 let chatMemory = [];
 let settings = null;
+let hasChatBeenInitialized = false; // Flag to prevent multiple initializations
 
 // For accessing Chrome extension resources safely
 const getExtensionURL = (path) => {
@@ -130,8 +131,9 @@ function toggleChat() {
   const existingChat = document.getElementById('n8n-builder-chat');
   if (existingChat) {
     existingChat.remove();
+    hasChatBeenInitialized = false; // Allow re-initialization if removed
   } else {
-    initChatbot();
+    initChatbot(); // This will request HTML and set up
   }
 }
 
@@ -139,19 +141,88 @@ function toggleChat() {
 function addMessage(sender, text) {
   const messagesArea = document.getElementById('n8n-builder-messages');
   if (!messagesArea) return;
-  
+
   const messageDiv = document.createElement('div');
   messageDiv.className = `n8n-builder-message ${sender}-message`;
+
+  let contentHtml = '';
+  if (sender === 'assistant') {
+    if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+      const rawHtml = marked.parse(text);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = rawHtml;
+
+      tempDiv.querySelectorAll('pre').forEach(preElement => {
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'relative';
+
+        const copyButton = document.createElement('button');
+        copyButton.textContent = 'Copy';
+        copyButton.className = 'copy-code-button';
+        // Position the button at the top-right corner of the wrapper
+        copyButton.style.position = 'absolute';
+        copyButton.style.top = '5px'; // Adjust as needed
+        copyButton.style.right = '5px'; // Adjust as needed
+        copyButton.style.zIndex = '1'; // Ensure it's above the code block
+
+        const codeElement = preElement.querySelector('code');
+        // Fallback to preElement.textContent if codeElement is not found (less likely with marked.js)
+        const textToCopy = codeElement ? codeElement.textContent : preElement.textContent;
+
+        copyButton.addEventListener('click', () => {
+          navigator.clipboard.writeText(textToCopy).then(() => {
+            copyButton.textContent = 'Copied!';
+            setTimeout(() => { copyButton.textContent = 'Copy'; }, 2000);
+          }).catch(err => {
+            console.error('Failed to copy text:', err);
+            copyButton.textContent = 'Error';
+            // Potentially show a small error message to the user or log it
+            setTimeout(() => { copyButton.textContent = 'Copy'; }, 2000);
+          });
+        });
+        
+        wrapper.appendChild(copyButton); // Add button to wrapper first
+        
+        // Then, move the original preElement into the wrapper.
+        // No need to clone if tempDiv is not part of the live DOM when this runs.
+        // replaceChild will handle moving preElement correctly.
+        wrapper.appendChild(preElement.cloneNode(true)); // Using cloneNode for safety as per prompt suggestion
+        
+        // Replace original pre element with the new wrapper in tempDiv
+        if (preElement.parentNode) { // Check if preElement still has a parent in tempDiv
+            preElement.parentNode.replaceChild(wrapper, preElement);
+        } else {
+            // This case should ideally not happen if tempDiv.innerHTML set correctly
+            // and preElement was queried from tempDiv.
+            // As a fallback, if preElement got detached, append wrapper to tempDiv.
+            tempDiv.appendChild(wrapper); 
+        }
+      });
+      contentHtml = tempDiv.innerHTML;
+    } else {
+      console.warn('marked.js library not found. Displaying raw text.');
+      contentHtml = text.replace(/[&<>"']/g, function(match) { // Basic escaping as a fallback
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+      });
+    }
+  } else {
+    // For user messages, just escape HTML to prevent XSS from user input
+     contentHtml = text.replace(/[&<>"']/g, function(match) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+      });
+  }
+
   messageDiv.innerHTML = `
     <div class="message-avatar ${sender}-avatar"></div>
-    <div class="message-content">${text}</div>
+    <div class="message-content">${contentHtml}</div>
   `;
   messagesArea.appendChild(messageDiv);
   messagesArea.scrollTop = messagesArea.scrollHeight;
-  
+
+  // Only add raw text to chatMemory for LLM context
   chatMemory.push({
     role: sender === 'user' ? 'user' : 'assistant',
-    content: text
+    content: text // Store the original, unprocessed text
   });
 }
 
@@ -231,36 +302,68 @@ async function callLLM(prompt) {
       ...chatMemory
     ];
 
-    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: settings.selectedModel || 'gpt-4',
+    let requestBody;
+    let endpointUrl;
+
+    if (settings.activeProvider === 'ollama') {
+      endpointUrl = `${baseUrl}/api/chat`;
+      requestBody = JSON.stringify({
+        model: settings.selectedModel, // Expects only model name, e.g., "llama3"
+        messages,
+        stream: false
+      });
+    } else {
+      // For openai and lmstudio
+      endpointUrl = `${baseUrl}/v1/chat/completions`;
+      requestBody = JSON.stringify({
+        model: settings.selectedModel || 'gpt-4', // Default for OpenAI-compatible
         messages,
         temperature: 0.7
-      })
+      });
+    }
+
+    const response = await fetch(endpointUrl, {
+      method: 'POST',
+      headers,
+      body: requestBody
     });
 
     const data = await response.json();
     removeLoadingIndicator();
 
     if (data.error) {
+      // Handles cases like {"error": "message"} or {"error": {"message": "details"}}
+      const errorMessage = typeof data.error === 'object' ? data.error.message : data.error;
       console.error('API error:', data.error);
-      addMessage('assistant', `Error: ${data.error.message}`);
+      addMessage('assistant', `Error: ${errorMessage}`);
       return;
     }
 
-    if (data.choices && data.choices[0]) {
-      const aiResponse = data.choices[0].message.content;
-      addMessage('assistant', aiResponse);
-      
-      const extractedJson = extractJsonFromResponse(aiResponse);
-      if (extractedJson) {
-        processWorkflowJson(extractedJson);
+    let aiResponse;
+    if (settings.activeProvider === 'ollama') {
+      if (data.message && data.message.content) {
+        aiResponse = data.message.content;
+      } else {
+        addMessage('assistant', 'Received an unexpected response structure from Ollama.');
+        return;
       }
     } else {
-      addMessage('assistant', 'I encountered an issue processing your request. Please try again.');
+      // For openai and lmstudio
+      if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+        aiResponse = data.choices[0].message.content;
+      } else {
+        addMessage('assistant', 'Received an unexpected response structure from the AI provider.');
+        return;
+      }
     }
+    
+    addMessage('assistant', aiResponse);
+    
+    const extractedJson = extractJsonFromResponse(aiResponse);
+    if (extractedJson) {
+      processWorkflowJson(extractedJson);
+    }
+
   } catch (error) {
     console.error('Error calling LLM:', error);
     removeLoadingIndicator();
@@ -314,25 +417,136 @@ function setupEventListeners() {
       injectChatIcon();
     });
   }
+
+  const clearButton = document.getElementById('n8n-builder-clear');
+  if (clearButton) {
+    clearButton.addEventListener('click', () => {
+      // 1. Clear chat memory
+      chatMemory = [];
+      console.log('Chat memory cleared.');
+
+      // 2. Clear messages from DOM
+      const messagesArea = document.getElementById('n8n-builder-messages');
+      if (messagesArea) {
+        messagesArea.innerHTML = '';
+        console.log('Chat messages cleared from DOM.');
+      }
+
+      // 3. Optional: Add a welcome/cleared message
+      addMessage('assistant', 'Chat cleared. How can I help you build your n8n workflow?');
+    });
+  }
 }
 
 // Initialize the chatbot
+function processChatHtmlAndInitializeDOM(htmlContent) {
+  if (document.getElementById('n8n-builder-chat')) {
+    console.log('Chat HTML already injected. Skipping re-injection.');
+    // If it's already injected, ensure event listeners are set up (might have been lost if script reloaded)
+    // and display welcome message if chat is empty.
+    if (!document.querySelector('.n8n-builder-message')) { // Check if messages area is empty
+        if (!settings) {
+            addMessage('assistant', 'Welcome! Please configure your AI provider settings in the extension popup.');
+        } else {
+            addMessage('assistant', 'Hello! I can help you build your n8n workflow. What would you like to add?');
+        }
+    }
+    // Ensure event listeners are attached, as they might be lost if the script re-runs or DOM is altered.
+    setupEventListeners();
+    return; 
+  }
+  
+  const chatContainer = document.createElement('div');
+  chatContainer.innerHTML = htmlContent; 
+  
+  if (chatContainer.firstChild) {
+    document.body.appendChild(chatContainer.firstChild);
+    console.log('Chat HTML injected and DOM ready.');
+  } else {
+    console.error('Received empty HTML content for chat.');
+    return;
+  }
+
+  setupEventListeners(); // Setup listeners for the new DOM elements
+
+  if (!settings) {
+    addMessage('assistant', 'Welcome! Please configure your AI provider settings in the extension popup.');
+  } else {
+    addMessage('assistant', 'Hello! I can help you build your n8n workflow. What would you like to add?');
+  }
+  hasChatBeenInitialized = true;
+}
+
 function initChatbot() {
+  // Ensure CSS is requested
   if (!document.getElementById('n8n-builder-styles')) {
     sendToContentScript({ type: 'getResourceURL', path: 'chatbot/chatbot.css' });
   }
+
+  // Assign the function that will process the HTML once received
+  window.processChatHtml = processChatHtmlAndInitializeDOM;
   
-  injectChatHtml(() => {
-    setupEventListeners();
-    
-    if (!settings) {
-      addMessage('assistant', 'Welcome! Please configure your AI provider settings in the extension popup.');
-    } else {
-      addMessage('assistant', 'Hello! I can help you build your n8n workflow. What would you like to add?');
-    }
-  });
+  // Request the chat HTML from the content script
+  // This will trigger the 'chatHtml' event, which then calls processChatHtmlAndInitializeDOM
+  sendToContentScript({ type: 'getChatHtml' });
 }
 
 // Initialize
 console.log('Chatbot script initialized');
 initialize();
+
+// Function to extract JSON from AI response
+function extractJsonFromResponse(aiResponse) {
+  // Logic to find and parse JSON from the AI's text response
+  // For example, looking for ```json ... ``` code blocks
+  const match = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
+  if (match && match[1]) {
+    try {
+      return JSON.parse(match[1]);
+    } catch (e) {
+      console.error('Error parsing JSON from response:', e);
+      return null;
+    }
+  }
+  return null;
+}
+
+// Function to process extracted workflow JSON
+function processWorkflowJson(extractedJson) {
+  console.log('Extracted JSON for workflow:', extractedJson);
+
+  if (settings && settings.n8nApiUrl && settings.n8nApiKey) {
+    console.log(`Attempting to connect to n8n API at ${settings.n8nApiUrl} with provided API key.`);
+    // Make the API call
+    (async () => { // Use an async IIFE to use await within the function
+      try {
+        const response = await fetch(`${settings.n8nApiUrl}/api/v1/me`, {
+          method: 'GET',
+          headers: {
+            'X-N8N-API-KEY': settings.n8nApiKey,
+            'Content-Type': 'application/json' 
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('n8n API connection test successful. Status:', response.status, 'Response:', data);
+          addMessage('assistant', `Successfully connected to n8n instance! User: ${data.email || 'N/A'}`);
+          // Future: Here you would proceed to use `extractedJson` to add nodes to the canvas
+          // For now, just confirming connection.
+        } else {
+          const errorText = await response.text();
+          console.error(`n8n API connection test failed. Status: ${response.status}. Details: ${errorText}`);
+          addMessage('assistant', `Failed to connect to n8n instance. Status: ${response.status}. Check console for error details.`);
+        }
+      } catch (error) {
+        console.error('Error during n8n API connection test:', error);
+        addMessage('assistant', `Error connecting to n8n instance: ${error.message}. Is the URL correct and the instance reachable?`);
+      }
+    })();
+  } else {
+    console.warn('n8n API settings (URL or Key) are not configured. Cannot test n8n connection.');
+    // Optionally, add a message to the user if they try an action that implies n8n use without settings
+    addMessage('assistant', 'Cannot perform n8n operation: n8n API URL or Key not set in extension settings.');
+  }
+}

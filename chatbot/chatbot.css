@@ -1,228 +1,186 @@
-/* Chat Overlay Styles (chatbot.css) */
+/* Chat Overlay Styles (chatbot.css) - Modern Phase 1 */
+
+/* General Principles:
+   - Modern sans-serif font stack for readability.
+   - Subtle borders and shadows.
+   - Clean, uncluttered feel.
+   - Consistency in styling.
+*/
+
+/* Overall Container */
 .n8n-builder-container {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 380px;
-    height: 550px;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    width: 380px; /* Standard width, can be adjusted */
+    height: 600px; /* Increased height for more content visibility */
+    background-color: #ffffff; /* Clean white background */
+    border-radius: 8px; /* Modern rounded corners */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Softer shadow */
     display: flex;
     flex-direction: column;
     z-index: 999999 !important;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    border: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    border: 1px solid #e0e0e0; /* Light border for definition */
 }
 
+/* Header */
 .n8n-builder-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 20px;
-    background: #ff6d5a;
-    color: #fff;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-    font-family: inherit;
-    font-weight: 600;
-    font-size: 16px;
-    border-bottom: 1px solid #e1e1e1;
+    padding: 12px 16px; /* Adjusted padding */
+    background-color: #f1f3f5; /* Clean light gray background */
+    color: #333; /* Darker text for contrast */
+    border-top-left-radius: 8px; /* Match container radius */
+    border-top-right-radius: 8px; /* Match container radius */
+    border-bottom: 1px solid #e0e0e0; /* Subtle separator */
 }
 
 .n8n-builder-title {
-    font-weight: 600;
-    font-size: 16px;
+    font-weight: 500; /* Clearer font weight */
+    font-size: 1rem; /* Standard size */
 }
 
 .n8n-builder-controls button {
     background: transparent;
     border: none;
-    color: #fff;
-    font-size: 18px;
-    margin-left: 8px;
+    font-size: 1.2em; /* Slightly larger for easier click */
     cursor: pointer;
-    border-radius: 4px;
-    transition: background 0.2s;
-    padding: 2px 6px;
+    color: #555; /* Less obtrusive color */
+    padding: 4px; /* Minimal padding */
+    margin-left: 8px;
+    transition: color 0.2s ease;
 }
 
 .n8n-builder-controls button:hover {
-    background: rgba(255,255,255,0.15);
+    color: #000; /* Darker on hover */
 }
 
+/* Messages Area */
 .n8n-builder-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 18px 20px;
+    padding: 16px; /* Increased padding */
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    background: #f5f5f7;
-    border-bottom: 1px solid #e1e1e1;
-    border-top: none;
-    border-radius: 0 0 0 0;
+    gap: 12px; /* Spacing between messages */
+    background-color: #ffffff; /* Keep messages area clean */
 }
 
+/* Individual Messages */
 .n8n-builder-message {
     display: flex;
-    max-width: 85%;
+    max-width: 85%; /* Keep message width reasonable */
+    margin-bottom: 12px; /* Spacing as per prompt (gap in parent also helps) */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 .user-message {
     align-self: flex-end;
-    flex-direction: row-reverse;
+    flex-direction: row-reverse; /* Avatar on the right */
 }
 
 .assistant-message {
     align-self: flex-start;
 }
 
+/* Avatars */
 .message-avatar {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
-    margin: 0 8px;
+    background-color: #ccc; /* Default avatar color */
     flex-shrink: 0;
+    margin-top: 0; /* Align with first line of text if possible */
 }
 
-.user-avatar {
-    background: #6665ee;
+.user-message .message-avatar {
+    margin-left: 8px; /* Space between content and avatar */
+    background-color: #007bff; /* User avatar color */
 }
 
-.assistant-avatar {
-    background: #ff6d5a;
+.assistant-message .message-avatar {
+    margin-right: 8px; /* Space between avatar and content */
+    background-color: #6c757d; /* Assistant avatar color (neutral gray) */
 }
 
+/* Message Content Bubbles */
 .message-content {
-    background: #fff;
-    padding: 12px 16px;
-    border-radius: 18px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07);
+    padding: 10px 15px; /* Padding as per prompt */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Lighter shadow */
     word-wrap: break-word;
-    font-size: 14px;
-    border: 1px solid #e1e1e1;
+    font-size: 0.95rem; /* Slightly larger for readability */
+    line-height: 1.5;
 }
 
 .user-message .message-content {
-    background: #6665ee;
-    color: #fff;
-    border-bottom-right-radius: 4px;
-    border: 1px solid #6665ee;
+    background-color: #007bff; /* Pleasant blue */
+    color: white;
+    border-radius: 18px 18px 0 18px; /* Rounded for right-aligned */
 }
 
 .assistant-message .message-content {
-    background: #fff;
-    color: #222;
-    border-bottom-left-radius: 4px;
-    border: 1px solid #e1e1e1;
-}
-
-/* Action buttons for JSON workflow application */
-.n8n-builder-actions {
-    padding: 0 20px;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease, padding 0.3s ease;
-}
-
-.n8n-builder-actions.show {
-    max-height: 100px;
-    padding: 10px 20px;
-    border-top: 1px solid #e1e1e1;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.action-button {
-    padding: 8px 12px;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.action-button.primary {
-    background-color: #ff6d5a;
-    color: white;
-}
-
-.action-button.primary:hover {
-    background-color: #e55a4a;
-}
-
-.action-button.secondary {
-    background-color: #f0f0f0;
+    background-color: #e9ecef; /* Light gray */
     color: #333;
+    border-radius: 18px 18px 18px 0; /* Rounded for left-aligned */
 }
 
-.action-button.secondary:hover {
-    background-color: #e0e0e0;
-}
-
+/* Input Area */
 .n8n-builder-input-area {
     display: flex;
-    padding: 16px 20px;
-    border-top: 1px solid #e1e1e1;
-    background: #fff;
+    align-items: center; /* Align items vertically */
+    padding: 10px; /* Spacing around elements */
+    border-top: 1px solid #e0e0e0; /* Separator */
+    background-color: #f8f9fa; /* Light background for input area */
 }
 
 #n8n-builder-input {
     flex: 1;
-    border: 1px solid #e1e1e1;
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 14px;
-    resize: none;
-    height: 40px;
-    outline: none;
-    font-family: inherit;
-    background: #fafbfc;
-    color: #222;
-    transition: border 0.2s;
+    border: 1px solid #ced4da; /* Modern border color */
+    padding: 10px; /* Comfortable padding */
+    border-radius: 8px; /* Rounded corners */
+    font-family: inherit; /* Match overall font */
+    font-size: 0.95rem;
+    resize: none; /* Usually not resizable in chat */
+    min-height: 40px; /* Ensure it's not too small */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 #n8n-builder-input:focus {
-    border: 1.5px solid #ff6d5a;
-    background: #fff;
+    border-color: #007bff; /* Highlight on focus */
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Focus ring */
+    outline: none;
 }
 
 #n8n-builder-send {
-    background: #ff6d5a;
-    color: #fff;
+    background-color: #007bff; /* Modern blue */
+    color: white;
     border: none;
-    border-radius: 8px;
-    padding: 0 20px;
-    margin-left: 10px;
-    font-weight: 600;
-    font-size: 15px;
+    padding: 10px 15px; /* Good padding */
+    border-radius: 8px; /* Rounded corners */
     cursor: pointer;
-    transition: background 0.2s;
-    height: 40px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+    margin-left: 8px; /* Space from textarea */
+    font-weight: 500;
+    transition: background-color 0.2s ease;
 }
 
 #n8n-builder-send:hover {
-    background: #ff5a45;
+    background-color: #0056b3; /* Darker on hover */
 }
 
-/* Footer styling */
+/* Footer */
 .n8n-builder-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
-    background: #fff;
-    border-top: 1px solid #e1e1e1;
-    font-size: 12px;
-    color: #666;
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
+    padding: 8px 16px; /* Adjusted padding */
+    border-top: 1px solid #e0e0e0; /* Separator */
+    font-size: 0.85em; /* Smaller text for footer */
+    color: #666; /* Muted color */
+    background-color: #f1f3f5; /* Match header for consistency */
+    border-bottom-left-radius: 8px; /* Match container */
+    border-bottom-right-radius: 8px; /* Match container */
 }
 
 .n8n-builder-status {
@@ -235,34 +193,237 @@
     height: 8px;
     border-radius: 50%;
     margin-right: 6px;
-    background-color: #ccc;
+    background-color: #ccc; /* Default status */
 }
 
 .status-indicator.active {
-    background-color: #4CAF50;
+    background-color: #28a745; /* Green for active */
 }
 
 .status-indicator.error {
-    background-color: #F44336;
+    background-color: #dc3545; /* Red for error */
 }
 
-.n8n-builder-clear-btn {
+#n8n-builder-clear { /* Changed from .n8n-builder-clear-btn to ID */
     background: transparent;
-    border: none;
-    color: #777;
-    font-size: 12px;
+    border: 1px solid #ccc;
+    color: #555;
+    padding: 4px 8px; /* Smaller padding from example (was 5px 10px) */
+    border-radius: 5px; /* Rounded corners */
     cursor: pointer;
-    padding: 4px 8px;
+    font-size: 0.9em; /* Consistent with footer text */
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+#n8n-builder-clear:hover { /* Changed from .n8n-builder-clear-btn to ID */
+    background-color: #e9ecef; /* Light hover */
+    border-color: #bbb;
+}
+
+/* Markdown Generated Content Styling */
+.message-content pre {
+    background-color: #212529; /* Darker background for code blocks */
+    color: #f8f9fa; /* Light text for code */
+    border-radius: 6px;
+    padding: 12px;
+    overflow-x: auto;
+    margin: 10px 0; /* Spacing around code blocks */
+    border: none; /* Remove default border if any */
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    font-size: 0.875em; /* Slightly smaller for code */
+    line-height: 1.45;
+}
+
+.message-content code:not(pre code) { /* Inline code */
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    background-color: rgba(0,0,0,0.05);
+    padding: .2em .4em;
+    border-radius: 3px;
+    font-size: 85%; /* Match pre code font size */
+}
+
+.message-content p {
+    margin-bottom: 0.5em; /* Spacing between paragraphs in a message */
+}
+.message-content ul, .message-content ol {
+    padding-left: 20px;
+    margin-bottom: 0.5em;
+}
+
+/* Styles for Copy Code Button */
+.copy-code-button {
+  padding: 4px 8px; /* Slightly more padding */
+  font-size: 0.8em;
+  border: 1px solid #495057; /* Darker border */
+  background-color: #343a40; /* Dark background */
+  color: #f8f9fa; /* Light text */
+  cursor: pointer;
+  border-radius: 4px; /* Slightly more rounded */
+  opacity: 0.7; /* Slightly transparent until hover */
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+  /* Position is set via inline styles in JS */
+}
+
+.copy-code-button:hover {
+  opacity: 1;
+  background-color: #495057; /* Slightly lighter on hover */
+}
+
+
+/* Chat Icon */
+.n8n-builder-chat-icon {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px; /* Slightly larger */
+    height: 50px;
+    border-radius: 50%;
+    background-color: #007bff; /* Consistent with primary action color */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 9999;
+    transition: all 0.3s ease;
+    border: none; /* Remove border if any */
+}
+
+.n8n-builder-chat-icon:hover {
+    transform: scale(1.1);
+    background-color: #0056b3; /* Darker on hover */
+}
+
+.n8n-builder-chat-icon img {
+    width: 28px; /* Adjust if icon changes */
+    height: 28px;
+    filter: brightness(0) invert(1); /* Make icon white if it's dark */
+}
+
+/* Mini Toast Notification */
+.n8n-builder-mini-toast {
+    position: fixed;
+    bottom: 80px; /* Adjust if needed based on chat window size/pos */
+    right: 20px;
+    padding: 10px 15px;
+    background-color: #333;
+    color: white;
     border-radius: 4px;
-    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 1000000 !important; /* Ensure it's on top of the chat window */
+    font-size: 0.9rem;
 }
 
-.n8n-builder-clear-btn:hover {
-    background: #f0f0f0;
-    color: #333;
+.n8n-builder-mini-toast.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
-pre {
+/* Typing Indicator */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 8px 0; /* Give it some space */
+}
+
+.typing-indicator span {
+    display: inline-block; /* Changed from block for better flow if text is beside */
+    width: 8px;
+    height: 8px;
+    background-color: #adb5bd; /* Muted color */
+    border-radius: 50%;
+    margin: 0 2px; /* Spacing between dots */
+    opacity: 0.4;
+    animation: typing-dot 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: 0s; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-dot {
+    0%, 80%, 100% { transform: scale(0.8); opacity: 0.4; }
+    40% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Action buttons for JSON workflow application */
+.n8n-builder-actions {
+    padding: 0 16px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.n8n-builder-actions.show {
+    max-height: 100px; /* Adjust as needed */
+    padding: 10px 16px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 0; /* Remove if padding is on parent */
+}
+
+.action-button {
+    padding: 8px 12px;
+    border-radius: 6px; /* Consistent rounding */
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.action-button.primary {
+    background-color: #007bff; /* Consistent primary color */
+    color: white;
+}
+.action-button.primary:hover {
+    background-color: #0056b3;
+}
+
+.action-button.secondary {
+    background-color: #6c757d; /* Secondary/neutral color */
+    color: white;
+}
+.action-button.secondary:hover {
+    background-color: #5a6268;
+}
+
+/* Loading message style */
+.n8n-builder-message.loading .message-content {
+    background: #f8f9fa; /* Light background for loading */
+    min-width: 80px;
+    padding: 10px 15px; /* Consistent padding */
+}
+
+/* Scrollbar styling (Webkit specific, for a more subtle look) */
+.n8n-builder-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.n8n-builder-messages::-webkit-scrollbar-track {
+    background: #f1f3f5; /* Light track */
+    border-radius: 3px;
+}
+
+.n8n-builder-messages::-webkit-scrollbar-thumb {
+    background: #ced4da; /* Muted thumb color */
+    border-radius: 3px;
+}
+
+.n8n-builder-messages::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd; /* Darker on hover */
+}
+
+/* Remove generic pre/code styling that might conflict with message-content pre/code */
+/* pre {
     background-color: #f1f1f1;
     border-radius: 4px;
     padding: 8px;
@@ -272,119 +433,4 @@ pre {
 code {
     font-family: monospace;
     font-size: 0.9em;
-}
-
-.n8n-builder-chat-icon {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background-color: #ffffff;
-    border: 1px solid #e1e1e1;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 9999;
-    transition: all 0.3s ease;
-}
-
-.n8n-builder-chat-icon:hover {
-    transform: scale(1.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-.n8n-builder-chat-icon img {
-    width: 28px;
-    height: 28px;
-}
-
-/* Mini toast notification */
-.n8n-builder-mini-toast {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    padding: 10px 15px;
-    background-color: #333;
-    color: white;
-    border-radius: 4px;
-    max-width: 250px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.3s ease;
-    z-index: 10000;
-}
-
-.n8n-builder-mini-toast.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* Typing indicator */
-.typing-indicator {
-    display: flex;
-    align-items: center;
-    column-gap: 6px;
-    margin: 10px 0;
-}
-
-.typing-indicator span {
-    display: block;
-    width: 8px;
-    height: 8px;
-    background-color: #9e9ea1;
-    border-radius: 50%;
-    opacity: 0.4;
-    animation: typing-dot 1.4s infinite ease-in-out both;
-}
-
-.typing-indicator span:nth-child(1) {
-    animation-delay: 0s;
-}
-
-.typing-indicator span:nth-child(2) {
-    animation-delay: 0.2s;
-}
-
-.typing-indicator span:nth-child(3) {
-    animation-delay: 0.4s;
-}
-
-@keyframes typing-dot {
-    0%, 80%, 100% { transform: scale(0.8); opacity: 0.4; }
-    40% { transform: scale(1.2); opacity: 1; }
-}
-
-/* JSON code blocks styling */
-.message-content pre {
-    background-color: #f5f5f5;
-    border-radius: 6px;
-    padding: 12px;
-    overflow-x: auto;
-    margin: 8px 0;
-    border: 1px solid #e0e0e0;
-}
-
-.message-content code {
-    font-family: 'Roboto Mono', Consolas, Monaco, 'Andale Mono', monospace;
-    font-size: 13px;
-    line-height: 1.4;
-    color: #333;
-}
-
-/* Add styling for assistant message with JSON actions */
-.assistant-message.action .message-content {
-    background: #f8f9fa;
-    border: 1px solid #ddd;
-    padding: 14px 18px;
-}
-
-/* Loading message style */
-.n8n-builder-message.loading .message-content {
-    background: #f8f8f8;
-    min-width: 80px;
-}
+} */

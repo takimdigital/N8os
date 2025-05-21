@@ -24,6 +24,79 @@ document.addEventListener('DOMContentLoaded', () => {
   const lmstudioUrlInput = document.getElementById('lmstudio-url');
   const n8nApiUrlInput = document.getElementById('n8n-api-url');
   const n8nApiKeyInput = document.getElementById('n8n-api-key');
+  const testN8nButton = document.getElementById('test-n8n-connection');
+  const n8nStatusDisplay = document.getElementById('n8n-connection-status');
+
+  if (testN8nButton && n8nApiUrlInput && n8nApiKeyInput && n8nStatusDisplay) {
+    testN8nButton.addEventListener('click', async () => {
+      const apiUrl = n8nApiUrlInput.value.trim();
+      const apiKey = n8nApiKeyInput.value.trim();
+
+      if (!apiUrl || !apiKey) {
+        n8nStatusDisplay.textContent = 'n8n API URL and Key are required.';
+        n8nStatusDisplay.className = 'connection-status-text status-error';
+        setTimeout(() => {
+          n8nStatusDisplay.textContent = '';
+          n8nStatusDisplay.className = 'connection-status-text';
+        }, 5000);
+        return;
+      }
+
+      n8nStatusDisplay.textContent = 'Testing...';
+      n8nStatusDisplay.className = 'connection-status-text status-testing';
+
+      try {
+        const response = await fetch(`${apiUrl}/api/v1/me`, {
+          method: 'GET',
+          headers: {
+            'X-N8N-API-KEY': apiKey,
+            // 'Content-Type': 'application/json' // Not strictly needed for GET, response type is what matters
+          }
+        });
+
+        const contentType = response.headers.get('content-type');
+
+        if (response.ok) {
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            n8nStatusDisplay.textContent = `Success! User: ${data.email || 'N/A'}`;
+            n8nStatusDisplay.className = 'connection-status-text status-success';
+          } else {
+            const textResponse = await response.text();
+            console.warn('n8n connection test received OK response but non-JSON content:', textResponse.substring(0, 500));
+            n8nStatusDisplay.textContent = 'OK response, but not JSON. Check console for actual content.';
+            n8nStatusDisplay.className = 'connection-status-text status-error'; // Treat as error or warning
+          }
+        } else { // Not response.ok (e.g., 401, 403, 404, 500)
+          const errorText = await response.text(); // Always get text for logging
+          console.error(`n8n connection test failed. Status: ${response.status}. Details:`, errorText.substring(0, 500));
+
+          if (contentType && contentType.includes('application/json')) {
+            try {
+              const errorJson = JSON.parse(errorText); // Try to parse if it claims to be JSON
+              n8nStatusDisplay.textContent = `Failed: ${response.status} - ${errorJson.message || 'Error from n8n. Check console.'}`;
+            } catch (e) {
+              // If parsing JSON fails even if Content-Type said it's JSON
+              n8nStatusDisplay.textContent = `Failed: ${response.status} - Malformed JSON error. Check console.`;
+            }
+          } else { // Non-JSON error response
+            n8nStatusDisplay.textContent = `Failed: ${response.status} - HTML or non-JSON response. Check console.`;
+          }
+          n8nStatusDisplay.className = 'connection-status-text status-error';
+        }
+      } catch (error) {
+        console.error('n8n connection fetch error:', error);
+        // This catch block handles network errors (e.g., server not reachable, CORS issues if not handled by browser)
+        n8nStatusDisplay.textContent = `Network Error: ${error.message.substring(0, 100)}. Check URL & connectivity.`;
+        n8nStatusDisplay.className = 'connection-status-text status-error';
+      }
+      
+      setTimeout(() => {
+        n8nStatusDisplay.textContent = '';
+        n8nStatusDisplay.className = 'connection-status-text';
+      }, 7000); // Clear message after 7 seconds
+    });
+  }
 
   // Function to fetch available models
   async function fetchModels(provider) {
@@ -35,16 +108,57 @@ document.addEventListener('DOMContentLoaded', () => {
       switch (provider) {
         case 'ollama':
           const ollamaUrl = ollamaUrlInput.value.trim();
-          const ollamaResponse = await fetch(`${ollamaUrl}/api/tags`);
+          // Ensure ollamaUrl has a protocol, default to http if missing for robustness
+          let finalOllamaUrl = ollamaUrl;
+          if (!finalOllamaUrl.startsWith('http://') && !finalOllamaUrl.startsWith('https://')) {
+              finalOllamaUrl = 'http://' + finalOllamaUrl;
+          }
+          // Check if the URL is valid before fetching
+          try {
+              new URL(finalOllamaUrl); // This will throw if the URL is malformed
+          } catch (e) {
+              console.error('Invalid Ollama URL:', finalOllamaUrl, e);
+              modelSelect.innerHTML = '<option value="">Invalid Ollama URL</option>';
+              modelSelect.disabled = false; // Re-enable to allow URL correction
+              return;
+          }
+          const ollamaResponse = await fetch(`${finalOllamaUrl}/api/tags`);
+          if (!ollamaResponse.ok) {
+              throw new Error(`Ollama API request failed with status ${ollamaResponse.status}`);
+          }
           const ollamaData = await ollamaResponse.json();
-          models = ollamaData.models || [];
+          // Ollama's /api/tags returns { models: [ { name: "model:tag", ... } ] }
+          models = ollamaData.models || []; // This should be an array of objects
           break;
 
         case 'lmstudio':
           const lmstudioUrl = lmstudioUrlInput.value.trim();
-          const lmstudioResponse = await fetch(`${lmstudioUrl}/v1/models`);
+          // Similar robustness for LM Studio URL
+          let finalLmstudioUrl = lmstudioUrl;
+          if (!finalLmstudioUrl.startsWith('http://') && !finalLmstudioUrl.startsWith('https://')) {
+            finalLmstudioUrl = 'http://' + finalLmstudioUrl;
+          }
+          try {
+            new URL(finalLmstudioUrl);
+          } catch (e) {
+            console.error('Invalid LM Studio URL:', finalLmstudioUrl, e);
+            modelSelect.innerHTML = '<option value="">Invalid LM Studio URL</option>';
+            modelSelect.disabled = false;
+            return;
+          }
+          const lmstudioResponse = await fetch(`${finalLmstudioUrl}/v1/models`);
+          if (!lmstudioResponse.ok) {
+            throw new Error(`LM Studio API request failed with status ${lmstudioResponse.status}`);
+          }
           const lmstudioData = await lmstudioResponse.json();
-          models = lmstudioData.data || [];
+          let rawLmstudioModels = lmstudioData.data || [];
+          // Ensure models have a consistent structure with 'id' for value and 'name' for display
+          // For LM Studio, 'id' is usually the path/identifier. 'name' might be the filename.
+          // If 'name' is problematic (e.g., an object), using 'id' for display is safer.
+          models = rawLmstudioModels.map(model => ({
+            id: model.id,
+            name: typeof model.name === 'string' ? model.name : model.id // Prefer string model.name, fallback to model.id
+          }));
           break;
 
         case 'openai':
@@ -62,9 +176,16 @@ document.addEventListener('DOMContentLoaded', () => {
           break;
       }
 
-      modelSelect.innerHTML = models.map(model => 
-        `<option value="${model.id || model}">${model.name || model}</option>`
-      ).join('');
+      // Generic mapping for all providers, now expects `models` to be an array of {id: string, name: string}
+      if (models.length > 0) {
+        modelSelect.innerHTML = models.map(model => 
+          // Ensure model.name and model.id are strings.
+          // The pre-processing for LM Studio should ensure model.name is a string.
+          `<option value="${String(model.id)}">${String(model.name)}</option>`
+        ).join('');
+      } else {
+        modelSelect.innerHTML = '<option value="">No models found</option>';
+      }
       
       modelSelect.disabled = false;
     } catch (error) {
