@@ -50,23 +50,44 @@ document.addEventListener('DOMContentLoaded', () => {
           method: 'GET',
           headers: {
             'X-N8N-API-KEY': apiKey,
-            'Content-Type': 'application/json'
+            // 'Content-Type': 'application/json' // Not strictly needed for GET, response type is what matters
           }
         });
 
+        const contentType = response.headers.get('content-type');
+
         if (response.ok) {
-          const data = await response.json();
-          n8nStatusDisplay.textContent = `Success! User: ${data.email || 'N/A'}`;
-          n8nStatusDisplay.className = 'connection-status-text status-success';
-        } else {
-          const errorText = await response.text();
-          console.error('n8n connection test error:', errorText);
-          n8nStatusDisplay.textContent = `Failed: ${response.status}. Check console.`;
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            n8nStatusDisplay.textContent = `Success! User: ${data.email || 'N/A'}`;
+            n8nStatusDisplay.className = 'connection-status-text status-success';
+          } else {
+            const textResponse = await response.text();
+            console.warn('n8n connection test received OK response but non-JSON content:', textResponse.substring(0, 500));
+            n8nStatusDisplay.textContent = 'OK response, but not JSON. Check console for actual content.';
+            n8nStatusDisplay.className = 'connection-status-text status-error'; // Treat as error or warning
+          }
+        } else { // Not response.ok (e.g., 401, 403, 404, 500)
+          const errorText = await response.text(); // Always get text for logging
+          console.error(`n8n connection test failed. Status: ${response.status}. Details:`, errorText.substring(0, 500));
+
+          if (contentType && contentType.includes('application/json')) {
+            try {
+              const errorJson = JSON.parse(errorText); // Try to parse if it claims to be JSON
+              n8nStatusDisplay.textContent = `Failed: ${response.status} - ${errorJson.message || 'Error from n8n. Check console.'}`;
+            } catch (e) {
+              // If parsing JSON fails even if Content-Type said it's JSON
+              n8nStatusDisplay.textContent = `Failed: ${response.status} - Malformed JSON error. Check console.`;
+            }
+          } else { // Non-JSON error response
+            n8nStatusDisplay.textContent = `Failed: ${response.status} - HTML or non-JSON response. Check console.`;
+          }
           n8nStatusDisplay.className = 'connection-status-text status-error';
         }
       } catch (error) {
         console.error('n8n connection fetch error:', error);
-        n8nStatusDisplay.textContent = `Error: ${error.message.substring(0, 100)}`;
+        // This catch block handles network errors (e.g., server not reachable, CORS issues if not handled by browser)
+        n8nStatusDisplay.textContent = `Network Error: ${error.message.substring(0, 100)}. Check URL & connectivity.`;
         n8nStatusDisplay.className = 'connection-status-text status-error';
       }
       
@@ -130,7 +151,14 @@ document.addEventListener('DOMContentLoaded', () => {
             throw new Error(`LM Studio API request failed with status ${lmstudioResponse.status}`);
           }
           const lmstudioData = await lmstudioResponse.json();
-          models = lmstudioData.data || [];
+          let rawLmstudioModels = lmstudioData.data || [];
+          // Ensure models have a consistent structure with 'id' for value and 'name' for display
+          // For LM Studio, 'id' is usually the path/identifier. 'name' might be the filename.
+          // If 'name' is problematic (e.g., an object), using 'id' for display is safer.
+          models = rawLmstudioModels.map(model => ({
+            id: model.id,
+            name: typeof model.name === 'string' ? model.name : model.id // Prefer string model.name, fallback to model.id
+          }));
           break;
 
         case 'openai':
@@ -148,9 +176,16 @@ document.addEventListener('DOMContentLoaded', () => {
           break;
       }
 
-      modelSelect.innerHTML = models.map(model => 
-        `<option value="${model.id || model}">${model.name || model}</option>`
-      ).join('');
+      // Generic mapping for all providers, now expects `models` to be an array of {id: string, name: string}
+      if (models.length > 0) {
+        modelSelect.innerHTML = models.map(model => 
+          // Ensure model.name and model.id are strings.
+          // The pre-processing for LM Studio should ensure model.name is a string.
+          `<option value="${String(model.id)}">${String(model.name)}</option>`
+        ).join('');
+      } else {
+        modelSelect.innerHTML = '<option value="">No models found</option>';
+      }
       
       modelSelect.disabled = false;
     } catch (error) {

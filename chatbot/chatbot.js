@@ -6,6 +6,7 @@ let isN8nPage = true;
 // Chat memory to maintain conversation context
 let chatMemory = [];
 let settings = null;
+let hasChatBeenInitialized = false; // Flag to prevent multiple initializations
 
 // For accessing Chrome extension resources safely
 const getExtensionURL = (path) => {
@@ -130,8 +131,9 @@ function toggleChat() {
   const existingChat = document.getElementById('n8n-builder-chat');
   if (existingChat) {
     existingChat.remove();
+    hasChatBeenInitialized = false; // Allow re-initialization if removed
   } else {
-    initChatbot();
+    initChatbot(); // This will request HTML and set up
   }
 }
 
@@ -437,20 +439,56 @@ function setupEventListeners() {
 }
 
 // Initialize the chatbot
+function processChatHtmlAndInitializeDOM(htmlContent) {
+  if (document.getElementById('n8n-builder-chat')) {
+    console.log('Chat HTML already injected. Skipping re-injection.');
+    // If it's already injected, ensure event listeners are set up (might have been lost if script reloaded)
+    // and display welcome message if chat is empty.
+    if (!document.querySelector('.n8n-builder-message')) { // Check if messages area is empty
+        if (!settings) {
+            addMessage('assistant', 'Welcome! Please configure your AI provider settings in the extension popup.');
+        } else {
+            addMessage('assistant', 'Hello! I can help you build your n8n workflow. What would you like to add?');
+        }
+    }
+    // Ensure event listeners are attached, as they might be lost if the script re-runs or DOM is altered.
+    setupEventListeners();
+    return; 
+  }
+  
+  const chatContainer = document.createElement('div');
+  chatContainer.innerHTML = htmlContent; 
+  
+  if (chatContainer.firstChild) {
+    document.body.appendChild(chatContainer.firstChild);
+    console.log('Chat HTML injected and DOM ready.');
+  } else {
+    console.error('Received empty HTML content for chat.');
+    return;
+  }
+
+  setupEventListeners(); // Setup listeners for the new DOM elements
+
+  if (!settings) {
+    addMessage('assistant', 'Welcome! Please configure your AI provider settings in the extension popup.');
+  } else {
+    addMessage('assistant', 'Hello! I can help you build your n8n workflow. What would you like to add?');
+  }
+  hasChatBeenInitialized = true;
+}
+
 function initChatbot() {
+  // Ensure CSS is requested
   if (!document.getElementById('n8n-builder-styles')) {
     sendToContentScript({ type: 'getResourceURL', path: 'chatbot/chatbot.css' });
   }
+
+  // Assign the function that will process the HTML once received
+  window.processChatHtml = processChatHtmlAndInitializeDOM;
   
-  injectChatHtml(() => {
-    setupEventListeners();
-    
-    if (!settings) {
-      addMessage('assistant', 'Welcome! Please configure your AI provider settings in the extension popup.');
-    } else {
-      addMessage('assistant', 'Hello! I can help you build your n8n workflow. What would you like to add?');
-    }
-  });
+  // Request the chat HTML from the content script
+  // This will trigger the 'chatHtml' event, which then calls processChatHtmlAndInitializeDOM
+  sendToContentScript({ type: 'getChatHtml' });
 }
 
 // Initialize
