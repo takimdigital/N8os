@@ -359,3 +359,38 @@ input:focus {
   color: #666;
   margin-top: 4px;
 }
+
+/* Button used for settings actions like Test Connection */
+.settings-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 8px 12px; /* Adjusted padding */
+  margin-top: 5px; /* Added margin for spacing */
+  margin-bottom: 5px; /* Added margin for spacing */
+  width: auto; /* Not full width like save */
+  display: inline-block; /* To sit next to the span */
+}
+
+.settings-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* n8n connection status text styling */
+.connection-status-text {
+  display: inline-block; /* Allows margin and padding */
+  margin-left: 10px;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.status-success {
+  color: #4CAF50; /* Green */
+}
+
+.status-error {
+  color: #F44336; /* Red */
+}
+
+.status-testing {
+  color: #FF9800; /* Orange */
+}

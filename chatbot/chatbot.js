@@ -139,19 +139,88 @@ function toggleChat() {
 function addMessage(sender, text) {
   const messagesArea = document.getElementById('n8n-builder-messages');
   if (!messagesArea) return;
-  
+
   const messageDiv = document.createElement('div');
   messageDiv.className = `n8n-builder-message ${sender}-message`;
+
+  let contentHtml = '';
+  if (sender === 'assistant') {
+    if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+      const rawHtml = marked.parse(text);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = rawHtml;
+
+      tempDiv.querySelectorAll('pre').forEach(preElement => {
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'relative';
+
+        const copyButton = document.createElement('button');
+        copyButton.textContent = 'Copy';
+        copyButton.className = 'copy-code-button';
+        // Position the button at the top-right corner of the wrapper
+        copyButton.style.position = 'absolute';
+        copyButton.style.top = '5px'; // Adjust as needed
+        copyButton.style.right = '5px'; // Adjust as needed
+        copyButton.style.zIndex = '1'; // Ensure it's above the code block
+
+        const codeElement = preElement.querySelector('code');
+        // Fallback to preElement.textContent if codeElement is not found (less likely with marked.js)
+        const textToCopy = codeElement ? codeElement.textContent : preElement.textContent;
+
+        copyButton.addEventListener('click', () => {
+          navigator.clipboard.writeText(textToCopy).then(() => {
+            copyButton.textContent = 'Copied!';
+            setTimeout(() => { copyButton.textContent = 'Copy'; }, 2000);
+          }).catch(err => {
+            console.error('Failed to copy text:', err);
+            copyButton.textContent = 'Error';
+            // Potentially show a small error message to the user or log it
+            setTimeout(() => { copyButton.textContent = 'Copy'; }, 2000);
+          });
+        });
+        
+        wrapper.appendChild(copyButton); // Add button to wrapper first
+        
+        // Then, move the original preElement into the wrapper.
+        // No need to clone if tempDiv is not part of the live DOM when this runs.
+        // replaceChild will handle moving preElement correctly.
+        wrapper.appendChild(preElement.cloneNode(true)); // Using cloneNode for safety as per prompt suggestion
+        
+        // Replace original pre element with the new wrapper in tempDiv
+        if (preElement.parentNode) { // Check if preElement still has a parent in tempDiv
+            preElement.parentNode.replaceChild(wrapper, preElement);
+        } else {
+            // This case should ideally not happen if tempDiv.innerHTML set correctly
+            // and preElement was queried from tempDiv.
+            // As a fallback, if preElement got detached, append wrapper to tempDiv.
+            tempDiv.appendChild(wrapper); 
+        }
+      });
+      contentHtml = tempDiv.innerHTML;
+    } else {
+      console.warn('marked.js library not found. Displaying raw text.');
+      contentHtml = text.replace(/[&<>"']/g, function(match) { // Basic escaping as a fallback
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+      });
+    }
+  } else {
+    // For user messages, just escape HTML to prevent XSS from user input
+     contentHtml = text.replace(/[&<>"']/g, function(match) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+      });
+  }
+
   messageDiv.innerHTML = `
     <div class="message-avatar ${sender}-avatar"></div>
-    <div class="message-content">${text}</div>
+    <div class="message-content">${contentHtml}</div>
   `;
   messagesArea.appendChild(messageDiv);
   messagesArea.scrollTop = messagesArea.scrollHeight;
-  
+
+  // Only add raw text to chatMemory for LLM context
   chatMemory.push({
     role: sender === 'user' ? 'user' : 'assistant',
-    content: text
+    content: text // Store the original, unprocessed text
   });
 }
 
@@ -346,6 +415,25 @@ function setupEventListeners() {
       injectChatIcon();
     });
   }
+
+  const clearButton = document.getElementById('n8n-builder-clear');
+  if (clearButton) {
+    clearButton.addEventListener('click', () => {
+      // 1. Clear chat memory
+      chatMemory = [];
+      console.log('Chat memory cleared.');
+
+      // 2. Clear messages from DOM
+      const messagesArea = document.getElementById('n8n-builder-messages');
+      if (messagesArea) {
+        messagesArea.innerHTML = '';
+        console.log('Chat messages cleared from DOM.');
+      }
+
+      // 3. Optional: Add a welcome/cleared message
+      addMessage('assistant', 'Chat cleared. How can I help you build your n8n workflow?');
+    });
+  }
 }
 
 // Initialize the chatbot
@@ -390,12 +478,37 @@ function processWorkflowJson(extractedJson) {
   console.log('Extracted JSON for workflow:', extractedJson);
 
   if (settings && settings.n8nApiUrl && settings.n8nApiKey) {
-    console.log(`Ready to add to canvas using n8n API. URL: ${settings.n8nApiUrl}, Key: ${settings.n8nApiKey ? 'provided' : 'missing'}`);
-    // Future: Implement actual API call to n8n instance here
-    // addMessage('assistant', 'Workflow JSON received. n8n integration is configured.');
+    console.log(`Attempting to connect to n8n API at ${settings.n8nApiUrl} with provided API key.`);
+    // Make the API call
+    (async () => { // Use an async IIFE to use await within the function
+      try {
+        const response = await fetch(`${settings.n8nApiUrl}/api/v1/me`, {
+          method: 'GET',
+          headers: {
+            'X-N8N-API-KEY': settings.n8nApiKey,
+            'Content-Type': 'application/json' 
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('n8n API connection test successful. Status:', response.status, 'Response:', data);
+          addMessage('assistant', `Successfully connected to n8n instance! User: ${data.email || 'N/A'}`);
+          // Future: Here you would proceed to use `extractedJson` to add nodes to the canvas
+          // For now, just confirming connection.
+        } else {
+          const errorText = await response.text();
+          console.error(`n8n API connection test failed. Status: ${response.status}. Details: ${errorText}`);
+          addMessage('assistant', `Failed to connect to n8n instance. Status: ${response.status}. Check console for error details.`);
+        }
+      } catch (error) {
+        console.error('Error during n8n API connection test:', error);
+        addMessage('assistant', `Error connecting to n8n instance: ${error.message}. Is the URL correct and the instance reachable?`);
+      }
+    })();
   } else {
-    console.warn('n8n API settings (URL or Key) are not configured. Cannot add to canvas. Please configure them in the extension settings.');
-    // Future: Maybe add a message to the chat interface about this
-    // addMessage('assistant', 'Workflow JSON received, but n8n integration is not fully configured for direct canvas updates.');
+    console.warn('n8n API settings (URL or Key) are not configured. Cannot test n8n connection.');
+    // Optionally, add a message to the user if they try an action that implies n8n use without settings
+    addMessage('assistant', 'Cannot perform n8n operation: n8n API URL or Key not set in extension settings.');
   }
 }

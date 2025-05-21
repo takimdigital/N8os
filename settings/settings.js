@@ -24,6 +24,58 @@ document.addEventListener('DOMContentLoaded', () => {
   const lmstudioUrlInput = document.getElementById('lmstudio-url');
   const n8nApiUrlInput = document.getElementById('n8n-api-url');
   const n8nApiKeyInput = document.getElementById('n8n-api-key');
+  const testN8nButton = document.getElementById('test-n8n-connection');
+  const n8nStatusDisplay = document.getElementById('n8n-connection-status');
+
+  if (testN8nButton && n8nApiUrlInput && n8nApiKeyInput && n8nStatusDisplay) {
+    testN8nButton.addEventListener('click', async () => {
+      const apiUrl = n8nApiUrlInput.value.trim();
+      const apiKey = n8nApiKeyInput.value.trim();
+
+      if (!apiUrl || !apiKey) {
+        n8nStatusDisplay.textContent = 'n8n API URL and Key are required.';
+        n8nStatusDisplay.className = 'connection-status-text status-error';
+        setTimeout(() => {
+          n8nStatusDisplay.textContent = '';
+          n8nStatusDisplay.className = 'connection-status-text';
+        }, 5000);
+        return;
+      }
+
+      n8nStatusDisplay.textContent = 'Testing...';
+      n8nStatusDisplay.className = 'connection-status-text status-testing';
+
+      try {
+        const response = await fetch(`${apiUrl}/api/v1/me`, {
+          method: 'GET',
+          headers: {
+            'X-N8N-API-KEY': apiKey,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          n8nStatusDisplay.textContent = `Success! User: ${data.email || 'N/A'}`;
+          n8nStatusDisplay.className = 'connection-status-text status-success';
+        } else {
+          const errorText = await response.text();
+          console.error('n8n connection test error:', errorText);
+          n8nStatusDisplay.textContent = `Failed: ${response.status}. Check console.`;
+          n8nStatusDisplay.className = 'connection-status-text status-error';
+        }
+      } catch (error) {
+        console.error('n8n connection fetch error:', error);
+        n8nStatusDisplay.textContent = `Error: ${error.message.substring(0, 100)}`;
+        n8nStatusDisplay.className = 'connection-status-text status-error';
+      }
+      
+      setTimeout(() => {
+        n8nStatusDisplay.textContent = '';
+        n8nStatusDisplay.className = 'connection-status-text';
+      }, 7000); // Clear message after 7 seconds
+    });
+  }
 
   // Function to fetch available models
   async function fetchModels(provider) {
