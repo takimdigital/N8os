@@ -87,14 +87,28 @@ function setupCommunicationBridge() {
         break;
         
       case 'getSettings':
-        chrome.storage.sync.get(['openaiKey', 'anthropicKey', 'activeProvider'], (result) => {
+        chrome.storage.sync.get([
+          'openaiKey', 
+          'anthropicKey', 
+          'activeProvider', 
+          'n8nApiUrl',
+          'n8nApiKey',
+          'ollamaUrl',
+          'lmstudioUrl',
+          'selectedModel'
+        ], (result) => {
           window.dispatchEvent(new CustomEvent('n8nCopilotContentEvent', {
             detail: {
-              type: 'settingsUpdated',
+              type: 'settingsUpdated', // This correctly updates the chatbot's settings object
               settings: {
                 openaiKey: result.openaiKey || '',
                 anthropicKey: result.anthropicKey || '',
-                activeProvider: result.activeProvider || 'openai'
+                activeProvider: result.activeProvider || 'openai',
+                n8nApiUrl: result.n8nApiUrl || '',
+                n8nApiKey: result.n8nApiKey || '',
+                ollamaUrl: result.ollamaUrl || '',
+                lmstudioUrl: result.lmstudioUrl || '',
+                selectedModel: result.selectedModel || ''
               }
             }
           }));

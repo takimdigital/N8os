@@ -231,36 +231,68 @@ async function callLLM(prompt) {
       ...chatMemory
     ];
 
-    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: settings.selectedModel || 'gpt-4',
+    let requestBody;
+    let endpointUrl;
+
+    if (settings.activeProvider === 'ollama') {
+      endpointUrl = `${baseUrl}/api/chat`;
+      requestBody = JSON.stringify({
+        model: settings.selectedModel, // Expects only model name, e.g., "llama3"
+        messages,
+        stream: false
+      });
+    } else {
+      // For openai and lmstudio
+      endpointUrl = `${baseUrl}/v1/chat/completions`;
+      requestBody = JSON.stringify({
+        model: settings.selectedModel || 'gpt-4', // Default for OpenAI-compatible
         messages,
         temperature: 0.7
-      })
+      });
+    }
+
+    const response = await fetch(endpointUrl, {
+      method: 'POST',
+      headers,
+      body: requestBody
     });
 
     const data = await response.json();
     removeLoadingIndicator();
 
     if (data.error) {
+      // Handles cases like {"error": "message"} or {"error": {"message": "details"}}
+      const errorMessage = typeof data.error === 'object' ? data.error.message : data.error;
       console.error('API error:', data.error);
-      addMessage('assistant', `Error: ${data.error.message}`);
+      addMessage('assistant', `Error: ${errorMessage}`);
       return;
     }
 
-    if (data.choices && data.choices[0]) {
-      const aiResponse = data.choices[0].message.content;
-      addMessage('assistant', aiResponse);
-      
-      const extractedJson = extractJsonFromResponse(aiResponse);
-      if (extractedJson) {
-        processWorkflowJson(extractedJson);
+    let aiResponse;
+    if (settings.activeProvider === 'ollama') {
+      if (data.message && data.message.content) {
+        aiResponse = data.message.content;
+      } else {
+        addMessage('assistant', 'Received an unexpected response structure from Ollama.');
+        return;
       }
     } else {
-      addMessage('assistant', 'I encountered an issue processing your request. Please try again.');
+      // For openai and lmstudio
+      if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+        aiResponse = data.choices[0].message.content;
+      } else {
+        addMessage('assistant', 'Received an unexpected response structure from the AI provider.');
+        return;
+      }
     }
+    
+    addMessage('assistant', aiResponse);
+    
+    const extractedJson = extractJsonFromResponse(aiResponse);
+    if (extractedJson) {
+      processWorkflowJson(extractedJson);
+    }
+
   } catch (error) {
     console.error('Error calling LLM:', error);
     removeLoadingIndicator();
@@ -336,3 +368,34 @@ function initChatbot() {
 // Initialize
 console.log('Chatbot script initialized');
 initialize();
+
+// Function to extract JSON from AI response
+function extractJsonFromResponse(aiResponse) {
+  // Logic to find and parse JSON from the AI's text response
+  // For example, looking for ```json ... ``` code blocks
+  const match = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
+  if (match && match[1]) {
+    try {
+      return JSON.parse(match[1]);
+    } catch (e) {
+      console.error('Error parsing JSON from response:', e);
+      return null;
+    }
+  }
+  return null;
+}
+
+// Function to process extracted workflow JSON
+function processWorkflowJson(extractedJson) {
+  console.log('Extracted JSON for workflow:', extractedJson);
+
+  if (settings && settings.n8nApiUrl && settings.n8nApiKey) {
+    console.log(`Ready to add to canvas using n8n API. URL: ${settings.n8nApiUrl}, Key: ${settings.n8nApiKey ? 'provided' : 'missing'}`);
+    // Future: Implement actual API call to n8n instance here
+    // addMessage('assistant', 'Workflow JSON received. n8n integration is configured.');
+  } else {
+    console.warn('n8n API settings (URL or Key) are not configured. Cannot add to canvas. Please configure them in the extension settings.');
+    // Future: Maybe add a message to the chat interface about this
+    // addMessage('assistant', 'Workflow JSON received, but n8n integration is not fully configured for direct canvas updates.');
+  }
+}

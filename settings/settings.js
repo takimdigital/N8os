@@ -35,14 +35,48 @@ document.addEventListener('DOMContentLoaded', () => {
       switch (provider) {
         case 'ollama':
           const ollamaUrl = ollamaUrlInput.value.trim();
-          const ollamaResponse = await fetch(`${ollamaUrl}/api/tags`);
+          // Ensure ollamaUrl has a protocol, default to http if missing for robustness
+          let finalOllamaUrl = ollamaUrl;
+          if (!finalOllamaUrl.startsWith('http://') && !finalOllamaUrl.startsWith('https://')) {
+              finalOllamaUrl = 'http://' + finalOllamaUrl;
+          }
+          // Check if the URL is valid before fetching
+          try {
+              new URL(finalOllamaUrl); // This will throw if the URL is malformed
+          } catch (e) {
+              console.error('Invalid Ollama URL:', finalOllamaUrl, e);
+              modelSelect.innerHTML = '<option value="">Invalid Ollama URL</option>';
+              modelSelect.disabled = false; // Re-enable to allow URL correction
+              return;
+          }
+          const ollamaResponse = await fetch(`${finalOllamaUrl}/api/tags`);
+          if (!ollamaResponse.ok) {
+              throw new Error(`Ollama API request failed with status ${ollamaResponse.status}`);
+          }
           const ollamaData = await ollamaResponse.json();
-          models = ollamaData.models || [];
+          // Ollama's /api/tags returns { models: [ { name: "model:tag", ... } ] }
+          models = ollamaData.models || []; // This should be an array of objects
           break;
 
         case 'lmstudio':
           const lmstudioUrl = lmstudioUrlInput.value.trim();
-          const lmstudioResponse = await fetch(`${lmstudioUrl}/v1/models`);
+          // Similar robustness for LM Studio URL
+          let finalLmstudioUrl = lmstudioUrl;
+          if (!finalLmstudioUrl.startsWith('http://') && !finalLmstudioUrl.startsWith('https://')) {
+            finalLmstudioUrl = 'http://' + finalLmstudioUrl;
+          }
+          try {
+            new URL(finalLmstudioUrl);
+          } catch (e) {
+            console.error('Invalid LM Studio URL:', finalLmstudioUrl, e);
+            modelSelect.innerHTML = '<option value="">Invalid LM Studio URL</option>';
+            modelSelect.disabled = false;
+            return;
+          }
+          const lmstudioResponse = await fetch(`${finalLmstudioUrl}/v1/models`);
+          if (!lmstudioResponse.ok) {
+            throw new Error(`LM Studio API request failed with status ${lmstudioResponse.status}`);
+          }
           const lmstudioData = await lmstudioResponse.json();
           models = lmstudioData.data || [];
           break;
