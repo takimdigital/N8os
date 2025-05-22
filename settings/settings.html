@@ -92,6 +92,31 @@
       <h2>RAG - Document Processing</h2>
       <div class="api-section"> <!-- Reuse existing class for consistent styling -->
         <div class="setting">
+          <label for="rag-embedding-provider">Embedding Provider:</label>
+          <select id="rag-embedding-provider">
+            <option value="ollama">Ollama</option>
+            <option value="lmstudio">LM Studio</option>
+            <option value="openai" disabled>OpenAI</option> <!-- Disabled by default, enabled via JS if OpenAI key exists -->
+          </select>
+        </div>
+        <div class="setting">
+          <label for="rag-embedding-provider-url">Embedding Provider URL:</label>
+          <input type="text" id="rag-embedding-provider-url" placeholder="e.g., http://localhost:11434">
+          <small class="helper-text-small">URL of the selected embedding provider (Ollama or LM Studio). Not needed for OpenAI.</small>
+        </div>
+        <div class="setting">
+          <label for="rag-embedding-model">Embedding Model Name:</label>
+          <input type="text" id="rag-embedding-model" placeholder="e.g., nomic-embed-text or text-embedding-ada-002">
+        </div>
+        <div class="setting">
+          <label for="qdrant-vector-size">Qdrant Vector Size:</label>
+          <input type="number" id="qdrant-vector-size" value="768" placeholder="e.g., 768">
+          <small class="helper-text-small">Output dimension of the embedding model (e.g., nomic-embed-text is 768, text-embedding-ada-002 is 1536).</small>
+        </div>
+
+        <hr style="border-top: 1px solid rgba(255,255,255,0.2); margin: 15px 0;">
+
+        <div class="setting">
           <label for="qdrant-url">Qdrant Server URL:</label>
           <input type="text" id="qdrant-url" value="http://localhost:6333" placeholder="http://localhost:6333">
         </div>
