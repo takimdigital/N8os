@@ -88,6 +88,42 @@
           <small>Required to apply workflow components directly to your canvas</small>
         </div>
       </div>
+
+      <h2>RAG - Document Processing</h2>
+      <div class="api-section"> <!-- Reuse existing class for consistent styling -->
+        <div class="setting">
+          <label for="qdrant-url">Qdrant Server URL:</label>
+          <input type="text" id="qdrant-url" value="http://localhost:6333" placeholder="http://localhost:6333">
+        </div>
+        <div class="setting">
+          <label for="qdrant-collection">Qdrant Collection Name:</label>
+          <input type="text" id="qdrant-collection" value="my_documents" placeholder="my_documents">
+        </div>
+        <div class="setting">
+          <label for="rag-file-input">Upload Document:</label>
+          <input type="file" id="rag-file-input" accept=".txt,.md,.docx"> 
+        </div>
+        <button id="rag-start-processing" type="button" class="settings-button">Start Processing</button>
+        <div id="rag-status-area" style="margin-top: 10px; min-height: 20px; border: 1px dashed #ccc; padding: 5px; font-size: 0.9em;">
+          <!-- RAG status messages will appear here (color will be set by JS status classes) -->
+        </div>
+      </div>
+
+      <h2>Processing Logs</h2>
+      <div id="rag-log-area-container" class="api-section">
+        <button id="toggle-rag-log" type="button" class="settings-button" style="margin-bottom: 5px;">Show/Hide Logs</button>
+        <div id="rag-log-area" style="display: none; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; background-color: #f9f9f9; padding: 10px; font-family: monospace; font-size: 0.9em; white-space: pre-wrap;">
+          <!-- Log messages will appear here -->
+        </div>
+      </div>
+
+      <h2>Processing Logs</h2>
+      <div id="rag-log-area-container" class="api-section">
+        <button id="toggle-rag-log" type="button" class="settings-button" style="margin-bottom: 5px;">Show Logs</button>
+        <div id="rag-log-area" style="display: none; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; background-color: #f9f9f9; padding: 10px; font-family: monospace; font-size: 0.9em; white-space: pre-wrap; color: #333;">
+          <!-- Log messages will appear here -->
+        </div>
+      </div>
       
       <button id="save-settings">Save Settings</button>
     </div>
@@ -96,6 +132,7 @@
       <p>v1.0.0 • Powered by AI</p>
     </div>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script src="settings.js"></script>
 </body>
 </html>
