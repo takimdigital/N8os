@@ -394,3 +394,39 @@ input:focus {
 .status-testing {
   color: #FF9800; /* Orange */
 }
+
+/* New RAG status types */
+.status-info {
+  color: #00529B; /* Blue for informational messages */
+}
+
+.status-progress {
+  color: #555; /* Dark gray for progress messages, can be same as testing or a bit different */
+}
+
+/* RAG Log Area Styling */
+#rag-log-area-container {
+  margin-top: 15px; /* More spacing for the section */
+}
+
+#rag-log-area {
+  /* max-height, overflow-y, border, background-color, padding, font-family, font-size, white-space are set inline in HTML */
+  /* We can override or add to them here if needed */
+  line-height: 1.4; /* Improve readability */
+  border-radius: 4px; /* Consistent rounding */
+}
+
+.log-entry { /* Base style for all log entries */
+  padding: 2px 0;
+  border-bottom: 1px solid #eee; /* Separator for log entries */
+}
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-info { color: #333; } /* Default text color from inline style */
+.log-success { color: #28a745; font-weight: bold; } /* Green */
+.log-error { color: #dc3545; font-weight: bold; } /* Red */
+.log-warn { color: #ffc107; } /* Yellow/Orange */
+.log-progress { color: #555; font-style: italic; }
+.log-system { color: #007bff; font-style: italic; } /* Blue for system messages like log shown/hidden */
